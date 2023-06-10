@@ -1,7 +1,5 @@
-## Temporal Codec Server
-https://codec.tmprl-demo.cloud/
-
-Based on the [Temporal Typescript Sample](https://github.com/temporalio/samples-typescript/blob/main/encryption/src/codec-server.ts)
+## Temporal App Directory Server
+https://apps.tmprl-demo.cloud/
 
 ### Install
 - `cd server/`
@@ -18,9 +16,9 @@ Based on the [Temporal Typescript Sample](https://github.com/temporalio/samples-
 
 `cd server`
 
-`docker build -t temporal-codec-server .`
+`docker build -t temporal-app-directory-server .`
 
-`docker run -p 3000:3000 -e PORT=3000 -d --platform linux/amd64 temporal-codec-server`
+`docker run -p 3000:3000 -e PORT=3000 -d --platform linux/amd64 temporal-app-directory-server`
 
 ### Kubernetes
 
