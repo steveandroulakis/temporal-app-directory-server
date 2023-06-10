@@ -3,6 +3,34 @@ import { resolve } from 'path';
 import express from 'express';
 import * as proto from '@temporalio/proto';
 import cors from 'cors';
+import { KubeConfig, CustomObjectsApi } from '@kubernetes/client-node';
+import k8s from '@kubernetes/client-node';
+
+const kc = new KubeConfig();
+kc.loadFromDefault();
+
+function parseHosts(matches: { match: string, entryPoints: string[] }[]): string[] {
+    const hostRegex = /Host\(`(.+?)`\)/;
+    return matches
+        .map(({ match, entryPoints }) => {
+            const result = match.match(hostRegex);
+            if (!result) {
+                return null;
+            }
+            const host = result[1];
+            if (entryPoints.includes('websecure')) {
+                return 'https://' + host;
+            } else if (entryPoints.includes('web')) {
+                return 'http://' + host;
+            } else {
+                console.log(`Ignoring host: ${host}`);
+                return null;
+            }
+        })
+        .filter((match): match is string => Boolean(match));
+}
+
+const customObjectsApi = kc.makeApiClient(CustomObjectsApi);
 
 // most of this code is from the Temporal samples repo
 // https://github.com/temporalio/samples-typescript/blob/main/encryption/src/codec-server.ts
@@ -28,20 +56,6 @@ console.log(process.env.NODE_ENV);
 
 const port = process.env.PORT || 3000;
 
-/**
- * Helper function to convert a valid proto JSON to a payload object.
- *
- * This method will be part of the SDK when it supports proto JSON serialization.
- */
-function fromJSON({ metadata, data }: JSONPayload): Payload {
-    return {
-        metadata:
-            metadata &&
-            Object.fromEntries(Object.entries(metadata).map(([k, v]): [string, Uint8Array] => [k, Buffer.from(v, 'base64')])),
-        data: data ? Buffer.from(data, 'base64') : undefined,
-    };
-}
-
 async function main() {
 
     const app = express();
@@ -52,8 +66,33 @@ async function main() {
     }));
     app.use(express.json());
 
-    app.get('/', (req, res) => {
-        res.send(`Hi from the App Directory Server!`);
+    app.get('/', async (req, res) => {
+
+        try {
+            const ingressRoutes: any = (await customObjectsApi.listClusterCustomObject(
+                'traefik.containo.us',
+                'v1alpha1',
+                'ingressroutes'
+            )).body;
+
+            const matches = ingressRoutes.items.flatMap((item: any) =>
+                item.spec.routes.map((route: any) => ({
+                    match: route.match,
+                    entryPoints: item.spec.entryPoints
+                }))
+            );
+
+            // dedupe hosts
+            const uniqueHosts = [...new Set(parseHosts(matches))];
+
+            // for each uniqueHost put into an a href link in a ul li list
+            const listItems = uniqueHosts.map((host) => `<li><a href="${host}">${host}</a></li>`).join('');
+            
+            res.send(`<p><strong>Exposed IngressRoutes</strong></p>${listItems}`);
+        } catch (err: any) {
+            res.status(500).json({ error: err.message });
+        }
+
     });
 
     await new Promise<void>((resolve, reject) => {

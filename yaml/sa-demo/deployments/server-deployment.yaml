@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: temporal-app-directory-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: temporal-app-directory-server
+  template:
+    metadata:
+      labels:
+        app: temporal-app-directory-server
+    spec:
+      containers:
+        - name: server
+          image: steveandroulakis/temporal-app-directory-server:latest
+          imagePullPolicy: Always
+          ports:
+            - name: server
+              containerPort: 3000
+          env:
+            - name: PORT
+              value: "3000"

@@ -1,0 +1,18 @@
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: temporal-app-directory-server-ingress
+spec:
+  entryPoints:
+  - websecure
+  routes:
+  - kind: Rule
+    match: Host(`apps.tmprl-demo.cloud`)
+    services:
+    - name: temporal-app-directory-server-service
+      passHostHeader: true
+      port: 3000
+      responseForwarding:
+        flushInterval: 100ms
+  tls:
+    secretName: tmprl-demo-cloud-server-tls
