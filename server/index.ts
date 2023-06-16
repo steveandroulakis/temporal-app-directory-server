@@ -4,7 +4,7 @@ import express from 'express';
 import * as proto from '@temporalio/proto';
 import cors from 'cors';
 import { KubeConfig, CustomObjectsApi } from '@kubernetes/client-node';
-import k8s from '@kubernetes/client-node';
+import filepath from 'path';
 
 const kc = new KubeConfig();
 kc.loadFromDefault();
@@ -66,7 +66,7 @@ async function main() {
     }));
     app.use(express.json());
 
-    app.get('/', async (req, res) => {
+    app.get('/api', async (req, res) => {
 
         try {
             const ingressRoutes: any = (await customObjectsApi.listClusterCustomObject(
@@ -85,14 +85,18 @@ async function main() {
             // dedupe hosts
             const uniqueHosts = [...new Set(parseHosts(matches))];
 
-            // for each uniqueHost put into an a href link in a ul li list
-            const listItems = uniqueHosts.map((host) => `<li><a href="${host}">${host}</a></li>`).join('');
-            
-            res.send(`<p><strong>Exposed IngressRoutes</strong></p>${listItems}`);
+            // send uniqueHosts as json with a top level key of hosts
+            res.json({ hosts: uniqueHosts });
         } catch (err: any) {
             res.status(500).json({ error: err.message });
         }
 
+    });
+
+    app.use('/static', express.static('static'));
+
+    app.get('/', (req, res) => {
+      res.sendFile(filepath.join(__dirname, 'static/index.html'));
     });
 
     await new Promise<void>((resolve, reject) => {
